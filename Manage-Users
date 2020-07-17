@@ -1,0 +1,89 @@
+#!/bin/bash
+
+#Cameron Deao
+#CST-221
+#Michael Landreth
+#7/17/2020
+
+#Argument Variables
+file=$1
+group=$2
+operation=$3
+
+#Exception handling which checks if 3 arguments were provided.
+if [ $# -eq 3 ]
+then
+	echo "Correct number of arguments provided."
+else
+	echo "Not enough arguments were provided! Please provide 3 arguments."
+	exit 1
+fi
+
+echo "File: $file"
+
+#Checking if the provided group already exists.
+if grep -q $group /etc/group
+then
+	echo "The group exists."
+else
+	groupadd $group
+	echo "The group did not exist. Created $group"
+		
+fi
+
+#Function to add each user.
+AddUser()
+{
+	#Reading through the text file.
+	while read -r username password
+	do
+		name="$username"
+		password="$password"
+		
+		echo "Username: $name Encrypted Password: $password"
+		#echo "Encrypted Password: $password"
+		
+		#Checking if the user already exists within the group.
+		egrep "^$name" /etc/passwd >/dev/null
+		if [ $? -eq 0 ]; then
+			echo "User already exists."
+		else
+			echo "User does not exist. Adding user!"
+			#Adding user and password to group.
+			useradd -m -p $password $name
+		fi
+	usermod -aG $group $name		
+	done < "$file"
+}
+
+#Function to remove each user.
+RemoveUser()
+{
+	#Reading through the text file.
+	while read -r username password
+	do
+		name="$username"
+		password="$password"
+		
+		#Checking if the user exists within the group.
+		egrep "^$name" /etc/passwd >/dev/null
+		if [ $? -eq 0 ]; then
+			echo "Deleting user"
+			#Deleting user from the group.
+			userdel -r $name
+		else
+			echo "User does not exist."
+		fi
+	done < "$file"
+}
+
+#Checking which operation needs to be called.
+if [[ "$operation" == "-a" ]]
+then
+	AddUser
+fi
+
+if [[ "$operation" == "-r" ]]
+then
+	RemoveUser
+fi
